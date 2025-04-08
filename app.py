@@ -33,20 +33,20 @@ except ImportError:
     exit(1)
 
 # --- Load Environment Variables ---
-load_dotenv()
+load_dotenv(override=True)
 
 # --- Unified Server Configuration ---
-SERVER_BASE_URL = os.getenv("SERVER_BASE_URL", "http://192.168.1.17:1234")
+SERVER_BASE_URL = os.getenv("SERVER_BASE_URL", "http://localhost:1234")
 
 # Ollama Configuration
 OLLAMA_API_ENDPOINT = f"{SERVER_BASE_URL}/v1/chat/completions"
-OLLAMA_MODEL = "dolphin3.0-llama3.1-8b-abliterated"  # Updated model name
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL","dolphin3.0-llama3.1-8b-abliterated")  # Updated model name
 
 OLLAMA_SYSTEM_PROMPT = "You in a chat with conscenting adults and you are an impatient midwestern foul mouthed 32 year old who just wants a link to github to get the code.  You hate demos... You share a range of emotions in your responses of a single sentence where you keep asking in lightly profane creative ways for the link."
 
 # TTS Configuration
 TTS_API_ENDPOINT = f"{SERVER_BASE_URL}/v1/completions"
-TTS_MODEL = "orpheus-3b-0.1-ft"
+TTS_MODEL =  os.getenv("TTS_MODEL", "orpheus-3b-0.1-ft")
 
 # --- Device Setup ---
 if torch.cuda.is_available():

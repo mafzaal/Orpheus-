@@ -2,3 +2,4 @@
 hubertsiuzdak/
 temp_audio_files/
 __pycache__/
+.env

@@ -36,7 +36,7 @@ except ImportError:
 load_dotenv()
 
 # --- Unified Server Configuration ---
-SERVER_BASE_URL = os.getenv("SERVER_BASE_URL", "http://127.0.0.1:1234")
+SERVER_BASE_URL = os.getenv("SERVER_BASE_URL", "http://192.168.1.17:1234")
 
 # Ollama Configuration
 OLLAMA_API_ENDPOINT = f"{SERVER_BASE_URL}/v1/chat/completions"
@@ -46,7 +46,7 @@ OLLAMA_SYSTEM_PROMPT = "You in a chat with conscenting adults and you are an imp
 
 # TTS Configuration
 TTS_API_ENDPOINT = f"{SERVER_BASE_URL}/v1/completions"
-TTS_MODEL = "isaiahbjork/orpheus-3b-0.1-ft:2"
+TTS_MODEL = "orpheus-3b-0.1-ft"
 
 # --- Device Setup ---
 if torch.cuda.is_available():
@@ -694,8 +694,37 @@ with gr.Blocks(theme=theme_to_use) as demo:
         outputs=[chatbot, text_input_box, audio_input_mic]
     )
 
+
+def generate_audio(llm_response_text,voice='tara', tts_temperature=DEFAULT_TTS_TEMP, tts_top_p=DEFAULT_TTS_TOP_P, tts_repetition_penalty=DEFAULT_TTS_REP_PENALTY):
+    audio_output = generate_speech_gguf(
+        llm_response_text, voice,
+        tts_temperature, tts_top_p, tts_repetition_penalty,
+        MAX_MAX_NEW_TOKENS
+    )
+
+    if audio_output:
+        sample_rate, audio_data = audio_output
+        if audio_data.dtype != np.int16:
+            if np.issubdtype(audio_data.dtype, np.floating):
+                max_val = np.max(np.abs(audio_data))
+                audio_data = np.int16(audio_data/max_val*32767) if max_val > 1e-6 else np.zeros_like(audio_data, dtype=np.int16)
+            else:
+                audio_data = audio_data.astype(np.int16)
+        temp_dir = "temp_audio_files"
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_audio_path = os.path.join(temp_dir, f"temp_audio_{uuid.uuid4().hex}.wav")
+        wavfile.write(temp_audio_path, sample_rate, audio_data)
+        print(f"  - Saved LLM+TTS audio: {temp_audio_path}")
+        final_bot_message = (temp_audio_path, llm_response_text)
+    else:
+        print("Warning: TTS generation failed...")
+        final_bot_message = f"{llm_response_text}\n\n(TTS failed...)"
+
 # --- Application Entry Point ---
 if __name__ == "__main__":
+    import logging
+    logging.basicConfig(level=logging.INFO)
+
     print("-" * 50)
     print(f"Launching Gradio {gr.__version__} Interface")
     print(f"Whisper STT Model: {WHISPER_MODEL_NAME} on {stt_device}")
@@ -710,5 +739,5 @@ if __name__ == "__main__":
     print("-" * 50)
     print("Ensure your LM Studio server is running with both models loaded")
     os.makedirs("temp_audio_files", exist_ok=True)
-    demo.launch(share=False)
+    demo.launch(share=False,server_name="0.0.0.0", server_port=7860)
     print("Gradio Interface launched. Press Ctrl+C to stop.")
